@@ -43,11 +43,21 @@ proguard/
 # 大文件排除 (避免GitHub限制)
 tools/gradle/lib/*.jar
 tools/java/lib/modules
+tools/java/lib/src.zip
+tools/java/lib/server/
+tools/java/jmods/
+tools/cmdline-tools/
 tools/**/*.jar
 tools/**/lib/
+tools/**/build-tools/
+tools/**/platforms/
+tools/**/platform-tools/
 *.jar
+*.so
+*.jmod
 
-# 编译产物
+# 编译产物和输出文件
+output/
 /android/app/build/
 /android/build/
 /android/.gradle/
