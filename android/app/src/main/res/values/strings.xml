@@ -1,7 +1,3 @@
 <resources>
-    <string name="app_name">Android Reader</string>
-    <string name="welcome_text">Welcome to Android Reader</string>
-    <string name="click_button_hint">Click the button below</string>
-    <string name="button_hello">Say Hello</string>
-    <string name="fab_description">Add new item</string>
+    <string name="app_name">Android Demo</string>
 </resources>

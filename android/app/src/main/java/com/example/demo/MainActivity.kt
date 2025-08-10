@@ -13,14 +13,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // 设置点击事件
-        binding.buttonHello.setOnClickListener {
-            binding.textViewMessage.text = "Hello, Android!"
-        }
-        
-        // 设置悬浮按钮点击事件
-        binding.fab.setOnClickListener {
-            binding.textViewMessage.text = "Floating Action Button clicked!"
-        }
+        // UI元素已移除，这里可以添加新的逻辑
     }
 }
