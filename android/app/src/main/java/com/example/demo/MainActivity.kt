@@ -13,6 +13,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // UI元素已移除，这里可以添加新的逻辑
+        // ActionBar已通过主题移除，界面现在是全屏布局
     }
 }
