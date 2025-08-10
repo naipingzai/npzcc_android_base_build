@@ -32,7 +32,9 @@ print_header() {
 # 获取脚本路径
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     # 脚本被 source
-    readonly SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
+    if [ -z "$SCRIPT_PATH" ]; then
+        readonly SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
+    fi
 else
     # 脚本被直接执行
     print_red "错误: 此脚本需要使用 source 命令执行"
@@ -41,8 +43,12 @@ else
     exit 1
 fi
 
-readonly SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-readonly PROJECT_DIR=$(dirname "$SCRIPT_DIR")
+if [ -z "$SCRIPT_DIR" ]; then
+    readonly SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+fi
+if [ -z "$PROJECT_DIR" ]; then
+    readonly PROJECT_DIR=$(dirname "$SCRIPT_DIR")
+fi
 readonly TOOLS_DIR="$PROJECT_DIR/tools"
 
 print_header "设置 Android 开发环境变量"
