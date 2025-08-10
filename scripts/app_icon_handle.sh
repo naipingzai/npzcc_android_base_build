@@ -76,7 +76,7 @@ fi
 
 # 获取图片分辨率信息
 print_yellow "获取图片分辨率信息..."
-RESOLUTION=$(ffmpeg -i "$ORIGIN_FILE" 2>&1 | grep "Stream.*Video" | sed -n 's/.*\([0-9]\{3,\}x[0-9]\{3,\}\).*/\1/p' | head -n1)
+RESOLUTION=$(ffmpeg -i "$ORIGIN_FILE" 2>&1 | grep "Stream.*Video" | grep -o '[0-9]\+x[0-9]\+' | head -n1)
 
 if [ -z "$RESOLUTION" ]; then
     print_red "错误: 无法获取图片分辨率信息"
