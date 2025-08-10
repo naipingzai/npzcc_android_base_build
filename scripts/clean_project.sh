@@ -90,18 +90,14 @@ clean_project() {
 
     echo
 
-    # 可选: 清理Gradle缓存
-    read -p "是否清理Gradle缓存? 这会使下次编译变慢 (y/N): " -n 1 -r
-    echo
-
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_blue "正在清理Gradle缓存..."
-        if [ -d ".gradle" ]; then
-            rm -rf .gradle
-            print_green "✓ Gradle缓存已清理"
-        else
-            print_yellow "⚠ Gradle缓存目录不存在"
-        fi
+    # 清理Gradle缓存目录
+    print_blue "正在清理Gradle缓存目录..."
+    if [ -d ".gradle" ]; then
+        local gradle_size_before=$(du -sh .gradle 2>/dev/null | cut -f1)
+        rm -rf .gradle
+        print_green "✓ Gradle缓存已清理 (清理了 $gradle_size_before)"
+    else
+        print_yellow "⚠ Gradle缓存目录不存在"
     fi
 
     echo
@@ -139,10 +135,7 @@ clean_project() {
     print_blue "  • 资源处理临时文件"
     print_blue "  • Kotlin/Java编译缓存"
     print_blue "  • IDE缓存文件"
-
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        print_blue "  • Gradle本地缓存"
-    fi
+    print_blue "  • Gradle本地缓存 (.gradle目录)"
 
     echo
     print_green "🎉 项目清理完成!"
