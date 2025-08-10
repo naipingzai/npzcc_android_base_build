@@ -170,9 +170,7 @@ build_project() {
                     apk_type="unknown"
                 fi
 
-                # 生成带时间戳的文件名
-                local timestamp=$(date +"%Y%m%d_%H%M%S")
-                local output_name="app_${apk_type}_${timestamp}.apk"
+                local output_name="app_${apk_type}.apk"
                 local output_path="$output_dir/$output_name"
 
                 print_green "📱 $apk ($size)"
