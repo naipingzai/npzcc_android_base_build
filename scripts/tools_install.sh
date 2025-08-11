@@ -2,9 +2,9 @@
 
 #===============================================================================
 # Android 开发环境安装脚本
-# 功能: 自动下载和安装 Android SDK、Gradle、Java 环境
+# 功能: 可选择性安装 Android SDK、Gradle、Java 环境、NDK
 # 作者: npz
-# 版本: 1.0
+# 版本: 2.0
 #===============================================================================
 
 # 获取脚本的绝对路径和所在目录
@@ -12,6 +12,94 @@ readonly SCRIPT_PATH=$(readlink -f "$0")
 readonly SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 readonly PROJECT_DIR=$(dirname "$SCRIPT_DIR")
 readonly TOOLS_DIR="$PROJECT_DIR/tools"
+
+# 全局变量
+INSTALL_SDK=false
+INSTALL_GRADLE=false
+INSTALL_JAVA=false
+INSTALL_NDK=false
+INSTALL_ALL=false
+
+#===============================================================================
+# 显示帮助信息
+#===============================================================================
+show_help() {
+    print_blue "Android 开发环境安装工具"
+    echo
+    print_blue "用法:"
+    print_blue "  $0 [选项]"
+    echo
+    print_blue "选项:"
+    print_blue "  --sdk            安装 Android SDK"
+    print_blue "  --gradle         安装 Gradle"
+    print_blue "  --java           安装 Java 环境"
+    print_blue "  --ndk            安装 Android NDK"
+    print_blue "  --all            安装所有组件"
+    print_blue "  -h, --help       显示此帮助信息"
+    echo
+    print_blue "示例:"
+    print_blue "  $0 --sdk --java           # 仅安装 SDK 和 Java"
+    print_blue "  $0 --gradle               # 仅安装 Gradle"
+    print_blue "  $0 --all                  # 安装所有组件"
+    print_blue "  $0                        # 显示帮助信息"
+}
+
+#===============================================================================
+# 解析命令行参数
+#===============================================================================
+parse_arguments() {
+    # 如果没有参数，显示帮助
+    if [[ $# -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --sdk)
+                INSTALL_SDK=true
+                shift
+                ;;
+            --gradle)
+                INSTALL_GRADLE=true
+                shift
+                ;;
+            --java)
+                INSTALL_JAVA=true
+                shift
+                ;;
+            --ndk)
+                INSTALL_NDK=true
+                shift
+                ;;
+            --all)
+                INSTALL_ALL=true
+                INSTALL_SDK=true
+                INSTALL_GRADLE=true
+                INSTALL_JAVA=true
+                INSTALL_NDK=true
+                shift
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                print_red "未知选项: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    # 检查是否至少选择了一个组件
+    if [[ "$INSTALL_SDK" = false && "$INSTALL_GRADLE" = false && "$INSTALL_JAVA" = false && "$INSTALL_NDK" = false ]]; then
+        print_red "错误: 请至少选择一个组件进行安装"
+        echo
+        show_help
+        exit 1
+    fi
+}
 
 #===============================================================================
 # 颜色输出函数
@@ -244,15 +332,95 @@ java_environment_install() {
 }
 
 #===============================================================================
+# Android NDK 安装函数
+#===============================================================================
+android_ndk_install() {
+    print_header "安装 Android NDK"
+
+    # 检查工作目录
+    if ! check_working_directory; then
+        return 1
+    fi
+
+    print_yellow "正在检查 Android NDK..."
+
+    # 检查 NDK 是否已存在
+    if [ ! -d "ndk" ]; then
+        print_yellow "Android NDK 不存在, 开始下载..."
+
+        # 使用最新稳定版本的 NDK
+        local ndk_version="26.1.10909125"
+        local ndk_archive="android-ndk-r26b-linux.zip"
+        local ndk_url="https://dl.google.com/android/repository/${ndk_archive}"
+
+        print_yellow "正在下载 Android NDK r26b..."
+        wget "$ndk_url" -O "$ndk_archive"
+
+        if [ $? -eq 0 ]; then
+            print_yellow "下载完成, 正在解压..."
+            unzip -q "$ndk_archive"
+
+            # 查找解压后的 NDK 目录并重命名
+            local ndk_extracted_dir
+            ndk_extracted_dir=$(find . -maxdepth 1 -name "android-ndk-r*" -type d | head -1)
+
+            if [ -n "$ndk_extracted_dir" ]; then
+                mv "$ndk_extracted_dir" ndk
+            fi
+
+            rm -f "$ndk_archive"
+            print_yellow "压缩包已清理"
+
+            # 设置执行权限
+            chmod +x ndk/ndk-build
+            print_green "✓ Android NDK 安装完成!"
+        else
+            print_red "✗ Android NDK 下载失败!"
+            return 1
+        fi
+    else
+        print_yellow "Android NDK 已存在"
+    fi
+
+    # 验证 NDK 是否可用
+    if [ -f "ndk/ndk-build" ]; then
+        print_green "✓ Android NDK 可用: ndk/ndk-build"
+        
+        # 显示 NDK 版本信息
+        if [ -f "ndk/source.properties" ]; then
+            print_blue "版本信息:"
+            grep "Pkg.Revision" ndk/source.properties | cut -d'=' -f2 | sed 's/^[ \t]*//'
+        fi
+
+        echo
+        print_blue "环境变量设置提示:"
+        print_blue "  export ANDROID_NDK_HOME=$(pwd)/ndk"
+        print_blue "  export PATH=\$PATH:\$ANDROID_NDK_HOME"
+    else
+        print_red "✗ Android NDK 不可用, 请检查安装"
+        return 1
+    fi
+}
+
+#===============================================================================
 # 主执行部分
 #===============================================================================
 main() {
+    # 解析命令行参数
+    parse_arguments "$@"
+
     print_header "Android 开发环境安装工具"
 
     print_blue "脚本信息:"
     print_blue "  脚本目录: $SCRIPT_DIR"
     print_blue "  工程路径: $PROJECT_DIR"
     print_blue "  工具路径: $TOOLS_DIR"
+    echo
+    print_blue "安装计划:"
+    print_blue "  Android SDK: $([ "$INSTALL_SDK" = true ] && echo "是" || echo "否")"
+    print_blue "  Gradle: $([ "$INSTALL_GRADLE" = true ] && echo "是" || echo "否")"
+    print_blue "  Java 环境: $([ "$INSTALL_JAVA" = true ] && echo "是" || echo "否")"
+    print_blue "  Android NDK: $([ "$INSTALL_NDK" = true ] && echo "是" || echo "否")"
     echo
 
     # 创建 tools 目录 (如果不存在)
@@ -270,31 +438,91 @@ main() {
 
     # 开始安装各个组件
     local install_success=0
-    local install_total=3
+    local install_total=0
 
-    # 安装 Android SDK
-    if android_sdk_install; then
-        ((install_success++))
-    fi
-    echo
+    # 计算总安装数
+    [ "$INSTALL_SDK" = true ] && ((install_total++))
+    [ "$INSTALL_GRADLE" = true ] && ((install_total++))
+    [ "$INSTALL_JAVA" = true ] && ((install_total++))
+    [ "$INSTALL_NDK" = true ] && ((install_total++))
 
-    # 安装 Gradle
-    if gradle_install; then
-        ((install_success++))
+    # 安装 Android SDK (如果指定)
+    if [ "$INSTALL_SDK" = true ]; then
+        if android_sdk_install; then
+            ((install_success++))
+        fi
+        echo
     fi
-    echo
 
-    # 安装 Java 环境
-    if java_environment_install; then
-        ((install_success++))
+    # 安装 Gradle (如果指定)
+    if [ "$INSTALL_GRADLE" = true ]; then
+        if gradle_install; then
+            ((install_success++))
+        fi
+        echo
     fi
-    echo
+
+    # 安装 Java 环境 (如果指定)
+    if [ "$INSTALL_JAVA" = true ]; then
+        if java_environment_install; then
+            ((install_success++))
+        fi
+        echo
+    fi
+
+    # 安装 NDK (如果指定)
+    if [ "$INSTALL_NDK" = true ]; then
+        if android_ndk_install; then
+            ((install_success++))
+        fi
+        echo
+    fi
 
     # 显示安装结果
     print_header "安装完成"
     if [ $install_success -eq $install_total ]; then
-        print_green "✓ 所有组件安装成功 ($install_success/$install_total)"
+        print_green "✓ 所有选定组件安装成功 ($install_success/$install_total)"
         print_blue "Android 开发环境已准备就绪!"
+        
+        # 显示环境变量设置建议
+        if [ $install_total -gt 0 ]; then
+            echo
+            print_header "环境变量设置建议"
+            print_blue "请将以下环境变量添加到您的 ~/.bashrc 或 ~/.zshrc 文件中:"
+            echo
+            
+            if [ "$INSTALL_JAVA" = true ]; then
+                print_yellow "export JAVA_HOME=$TOOLS_DIR/java"
+            fi
+            if [ "$INSTALL_SDK" = true ]; then
+                print_yellow "export ANDROID_HOME=$TOOLS_DIR/cmdline-tools"
+            fi
+            if [ "$INSTALL_GRADLE" = true ]; then
+                print_yellow "export GRADLE_HOME=$TOOLS_DIR/gradle"
+            fi
+            if [ "$INSTALL_NDK" = true ]; then
+                print_yellow "export ANDROID_NDK_HOME=$TOOLS_DIR/ndk"
+            fi
+            
+            # 构建 PATH 变量
+            local path_additions=""
+            if [ "$INSTALL_JAVA" = true ]; then
+                path_additions=":\$JAVA_HOME/bin"
+            fi
+            if [ "$INSTALL_SDK" = true ]; then
+                path_additions="$path_additions:\$ANDROID_HOME/bin"
+            fi
+            if [ "$INSTALL_GRADLE" = true ]; then
+                path_additions="$path_additions:\$GRADLE_HOME/bin"
+            fi
+            if [ "$INSTALL_NDK" = true ]; then
+                path_additions="$path_additions:\$ANDROID_NDK_HOME"
+            fi
+            
+            if [ -n "$path_additions" ]; then
+                print_yellow "export PATH=\$PATH$path_additions"
+            fi
+        fi
     else
         print_yellow "⚠ 部分组件安装失败 ($install_success/$install_total)"
         print_yellow "请检查错误信息并重新运行脚本"

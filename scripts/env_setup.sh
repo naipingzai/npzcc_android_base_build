@@ -3,9 +3,9 @@
 #===============================================================================
 # Android 开发环境变量设置脚本
 # 用法: source scripts/env_setup.sh 或 . scripts/env_setup.sh
-# 功能: 设置 Android 开发所需的环境变量
+# 功能: 设置 Android 开发所需的环境变量 (包含 NDK)
 # 作者: npz
-# 版本: 1.0
+# 版本: 1.1
 #===============================================================================
 
 # 颜色输出函数
@@ -122,6 +122,20 @@ else
 fi
 
 #===============================================================================
+# 设置 Android NDK 环境变量
+#===============================================================================
+if [ -d "$TOOLS_DIR/ndk" ] && [ -f "$TOOLS_DIR/ndk/ndk-build" ]; then
+    export ANDROID_NDK_HOME="$TOOLS_DIR/ndk"
+    export NDK_HOME="$ANDROID_NDK_HOME"
+    export PATH="$ANDROID_NDK_HOME:$PATH"
+    print_green "✓ ANDROID_NDK_HOME 设置为: $ANDROID_NDK_HOME"
+    print_green "✓ NDK_HOME 设置为: $NDK_HOME"
+    ((ENV_VARS_SET++))
+else
+    print_yellow "⚠ Android NDK 未找到, 跳过 NDK 环境变量设置"
+fi
+
+#===============================================================================
 # 显示设置结果
 #===============================================================================
 echo
@@ -136,6 +150,8 @@ if [ $ENV_VARS_SET -gt 0 ]; then
     [ -n "$ANDROID_HOME" ] && print_blue "  ANDROID_HOME = $ANDROID_HOME"
     [ -n "$ANDROID_SDK_ROOT" ] && print_blue "  ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
     [ -n "$GRADLE_HOME" ] && print_blue "  GRADLE_HOME = $GRADLE_HOME"
+    [ -n "$ANDROID_NDK_HOME" ] && print_blue "  ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
+    [ -n "$NDK_HOME" ] && print_blue "  NDK_HOME = $NDK_HOME"
 
     echo
     print_blue "验证工具版本:"
@@ -156,6 +172,16 @@ if [ $ENV_VARS_SET -gt 0 ]; then
     if command -v gradle >/dev/null 2>&1; then
         GRADLE_VERSION=$(gradle --version | grep "Gradle" | head -n 1)
         print_green "  $GRADLE_VERSION"
+    fi
+
+    # 验证 NDK
+    if command -v ndk-build >/dev/null 2>&1; then
+        print_green "  NDK: ndk-build 可用"
+        # 显示 NDK 版本
+        if [ -f "$ANDROID_NDK_HOME/source.properties" ]; then
+            NDK_VERSION=$(grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d'=' -f2 | sed 's/^[ \t]*//')
+            print_green "  NDK Version: $NDK_VERSION"
+        fi
     fi
 
     echo
