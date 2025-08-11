@@ -18,6 +18,7 @@ INSTALL_SDK=false
 INSTALL_GRADLE=false
 INSTALL_JAVA=false
 INSTALL_NDK=false
+INSTALL_CMAKE=false
 INSTALL_ALL=false
 
 #===============================================================================
@@ -34,12 +35,14 @@ show_help() {
     print_blue "  --gradle         安装 Gradle"
     print_blue "  --java           安装 Java 环境"
     print_blue "  --ndk            安装 Android NDK"
+    print_blue "  --cmake          安装 CMake"
     print_blue "  --all            安装所有组件"
     print_blue "  -h, --help       显示此帮助信息"
     echo
     print_blue "示例:"
     print_blue "  $0 --sdk --java           # 仅安装 SDK 和 Java"
     print_blue "  $0 --gradle               # 仅安装 Gradle"
+    print_blue "  $0 --ndk --cmake          # 安装 NDK 和 CMake (推荐用于 NDK 开发)"
     print_blue "  $0 --all                  # 安装所有组件"
     print_blue "  $0                        # 显示帮助信息"
 }
@@ -72,12 +75,17 @@ parse_arguments() {
                 INSTALL_NDK=true
                 shift
                 ;;
+            --cmake)
+                INSTALL_CMAKE=true
+                shift
+                ;;
             --all)
                 INSTALL_ALL=true
                 INSTALL_SDK=true
                 INSTALL_GRADLE=true
                 INSTALL_JAVA=true
                 INSTALL_NDK=true
+                INSTALL_CMAKE=true
                 shift
                 ;;
             -h|--help)
@@ -93,7 +101,7 @@ parse_arguments() {
     done
 
     # 检查是否至少选择了一个组件
-    if [[ "$INSTALL_SDK" = false && "$INSTALL_GRADLE" = false && "$INSTALL_JAVA" = false && "$INSTALL_NDK" = false ]]; then
+    if [[ "$INSTALL_SDK" = false && "$INSTALL_GRADLE" = false && "$INSTALL_JAVA" = false && "$INSTALL_NDK" = false && "$INSTALL_CMAKE" = false ]]; then
         print_red "错误: 请至少选择一个组件进行安装"
         echo
         show_help
@@ -403,6 +411,73 @@ android_ndk_install() {
 }
 
 #===============================================================================
+# CMake 安装函数
+#===============================================================================
+cmake_install() {
+    print_header "安装 CMake"
+
+    # 检查工作目录
+    if ! check_working_directory; then
+        return 1
+    fi
+
+    print_yellow "正在检查 CMake..."
+
+    # 检查 CMake 是否已存在
+    if [ ! -d "cmake" ]; then
+        print_yellow "CMake 不存在, 开始下载..."
+
+        # 使用 CMake 3.22.1 (Android 推荐版本)
+        local cmake_version="3.22.1"
+        local cmake_archive="cmake-${cmake_version}-linux-x86_64.tar.gz"
+        local cmake_url="https://github.com/Kitware/CMake/releases/download/v${cmake_version}/${cmake_archive}"
+
+        print_yellow "正在下载 CMake ${cmake_version}..."
+        wget "$cmake_url" -O "$cmake_archive"
+
+        if [ $? -eq 0 ]; then
+            print_yellow "下载完成, 正在解压..."
+            tar -xzf "$cmake_archive"
+
+            # 查找解压后的 CMake 目录并重命名
+            local cmake_extracted_dir
+            cmake_extracted_dir=$(find . -maxdepth 1 -name "cmake-${cmake_version}-*" -type d | head -1)
+
+            if [ -n "$cmake_extracted_dir" ]; then
+                mv "$cmake_extracted_dir" cmake
+            fi
+
+            rm -f "$cmake_archive"
+            print_yellow "压缩包已清理"
+
+            # 设置执行权限
+            chmod +x cmake/bin/*
+            print_green "✓ CMake 安装完成!"
+        else
+            print_red "✗ CMake 下载失败!"
+            return 1
+        fi
+    else
+        print_yellow "CMake 已存在"
+    fi
+
+    # 验证 CMake 是否可用
+    if [ -f "cmake/bin/cmake" ]; then
+        print_green "✓ CMake 可用: cmake/bin/cmake"
+        print_blue "版本信息:"
+        cmake/bin/cmake --version | head -n 1
+
+        echo
+        print_blue "环境变量设置提示:"
+        print_blue "  export CMAKE_HOME=$(pwd)/cmake"
+        print_blue "  export PATH=\$PATH:\$CMAKE_HOME/bin"
+    else
+        print_red "✗ CMake 不可用, 请检查安装"
+        return 1
+    fi
+}
+
+#===============================================================================
 # 主执行部分
 #===============================================================================
 main() {
@@ -421,6 +496,7 @@ main() {
     print_blue "  Gradle: $([ "$INSTALL_GRADLE" = true ] && echo "是" || echo "否")"
     print_blue "  Java 环境: $([ "$INSTALL_JAVA" = true ] && echo "是" || echo "否")"
     print_blue "  Android NDK: $([ "$INSTALL_NDK" = true ] && echo "是" || echo "否")"
+    print_blue "  CMake: $([ "$INSTALL_CMAKE" = true ] && echo "是" || echo "否")"
     echo
 
     # 创建 tools 目录 (如果不存在)
@@ -445,6 +521,7 @@ main() {
     [ "$INSTALL_GRADLE" = true ] && ((install_total++))
     [ "$INSTALL_JAVA" = true ] && ((install_total++))
     [ "$INSTALL_NDK" = true ] && ((install_total++))
+    [ "$INSTALL_CMAKE" = true ] && ((install_total++))
 
     # 安装 Android SDK (如果指定)
     if [ "$INSTALL_SDK" = true ]; then
@@ -478,6 +555,14 @@ main() {
         echo
     fi
 
+    # 安装 CMake (如果指定)
+    if [ "$INSTALL_CMAKE" = true ]; then
+        if cmake_install; then
+            ((install_success++))
+        fi
+        echo
+    fi
+
     # 显示安装结果
     print_header "安装完成"
     if [ $install_success -eq $install_total ]; then
@@ -503,6 +588,9 @@ main() {
             if [ "$INSTALL_NDK" = true ]; then
                 print_yellow "export ANDROID_NDK_HOME=$TOOLS_DIR/ndk"
             fi
+            if [ "$INSTALL_CMAKE" = true ]; then
+                print_yellow "export CMAKE_HOME=$TOOLS_DIR/cmake"
+            fi
             
             # 构建 PATH 变量
             local path_additions=""
@@ -517,6 +605,9 @@ main() {
             fi
             if [ "$INSTALL_NDK" = true ]; then
                 path_additions="$path_additions:\$ANDROID_NDK_HOME"
+            fi
+            if [ "$INSTALL_CMAKE" = true ]; then
+                path_additions="$path_additions:\$CMAKE_HOME/bin"
             fi
             
             if [ -n "$path_additions" ]; then

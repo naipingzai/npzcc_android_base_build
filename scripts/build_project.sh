@@ -2,9 +2,9 @@
 
 #===============================================================================
 # Android 项目编译脚本
-# 功能: 自动设置环境变量并编译Android项目
+# 功能: 自动设置环境变量并编译Android项目 (支持NDK)
 # 作者: npz
-# 版本: 1.0
+# 版本: 1.1
 #===============================================================================
 
 # 获取脚本的绝对路径和所在目录
@@ -56,9 +56,37 @@ check_environment() {
         return $?
     fi
 
+    # 检查NDK (对于NDK项目)
+    if [ ! -d "$PROJECT_DIR/tools/ndk" ]; then
+        print_yellow "⚠ NDK 未安装"
+        print_blue "此项目包含NDK代码，需要安装Android NDK"
+        read -p "是否现在安装NDK开发环境? [Y/n]: " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            print_blue "正在安装NDK开发环境..."
+            if [ -f "$SCRIPT_DIR/ndk_setup.sh" ]; then
+                bash "$SCRIPT_DIR/ndk_setup.sh"
+            else
+                print_red "NDK安装脚本不存在"
+                return 1
+            fi
+        else
+            print_yellow "跳过NDK安装，可能会导致编译失败"
+        fi
+    fi
+
+    # 检查CMake (对于NDK项目)
+    if ! command -v cmake >/dev/null 2>&1; then
+        print_yellow "⚠ CMake 未找到"
+        print_blue "NDK项目需要CMake支持"
+        source "$SCRIPT_DIR/env_setup.sh"
+    fi
+
     print_green "✓ 环境变量已设置"
     print_blue "  JAVA_HOME: $JAVA_HOME"
     print_blue "  ANDROID_HOME: $ANDROID_HOME"
+    [ -n "$ANDROID_NDK_HOME" ] && print_blue "  ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+    [ -n "$CMAKE_HOME" ] && print_blue "  CMAKE_HOME: $CMAKE_HOME"
     return 0
 }
 

@@ -3,9 +3,9 @@
 #===============================================================================
 # Android 开发环境变量设置脚本
 # 用法: source scripts/env_setup.sh 或 . scripts/env_setup.sh
-# 功能: 设置 Android 开发所需的环境变量 (包含 NDK)
+# 功能: 设置 Android 开发所需的环境变量 (包含 NDK 和 CMake)
 # 作者: npz
-# 版本: 1.1
+# 版本: 1.2
 #===============================================================================
 
 # 颜色输出函数
@@ -136,6 +136,18 @@ else
 fi
 
 #===============================================================================
+# 设置 CMake 环境变量
+#===============================================================================
+if [ -d "$TOOLS_DIR/cmake" ] && [ -f "$TOOLS_DIR/cmake/bin/cmake" ]; then
+    export CMAKE_HOME="$TOOLS_DIR/cmake"
+    export PATH="$CMAKE_HOME/bin:$PATH"
+    print_green "✓ CMAKE_HOME 设置为: $CMAKE_HOME"
+    ((ENV_VARS_SET++))
+else
+    print_yellow "⚠ CMake 未找到, 跳过 CMAKE_HOME 设置"
+fi
+
+#===============================================================================
 # 显示设置结果
 #===============================================================================
 echo
@@ -152,6 +164,7 @@ if [ $ENV_VARS_SET -gt 0 ]; then
     [ -n "$GRADLE_HOME" ] && print_blue "  GRADLE_HOME = $GRADLE_HOME"
     [ -n "$ANDROID_NDK_HOME" ] && print_blue "  ANDROID_NDK_HOME = $ANDROID_NDK_HOME"
     [ -n "$NDK_HOME" ] && print_blue "  NDK_HOME = $NDK_HOME"
+    [ -n "$CMAKE_HOME" ] && print_blue "  CMAKE_HOME = $CMAKE_HOME"
 
     echo
     print_blue "验证工具版本:"
@@ -182,6 +195,12 @@ if [ $ENV_VARS_SET -gt 0 ]; then
             NDK_VERSION=$(grep "Pkg.Revision" "$ANDROID_NDK_HOME/source.properties" | cut -d'=' -f2 | sed 's/^[ \t]*//')
             print_green "  NDK Version: $NDK_VERSION"
         fi
+    fi
+
+    # 验证 CMake
+    if command -v cmake >/dev/null 2>&1; then
+        CMAKE_VERSION=$(cmake --version | head -n 1)
+        print_green "  $CMAKE_VERSION"
     fi
 
     echo
