@@ -5,7 +5,7 @@
 # 用法: source scripts/env_setup.sh 或 . scripts/env_setup.sh
 # 功能: 设置 Android 开发所需的环境变量 (包含 NDK 和 CMake)
 # 作者: npz
-# 版本: 1.2
+# 版本: 3.0
 #===============================================================================
 
 # 颜色输出函数
@@ -49,7 +49,9 @@ fi
 if [ -z "$PROJECT_DIR" ]; then
     readonly PROJECT_DIR=$(dirname "$SCRIPT_DIR")
 fi
-readonly TOOLS_DIR="$PROJECT_DIR/tools"
+if [ -z "$TOOLS_DIR" ]; then
+    readonly TOOLS_DIR="$PROJECT_DIR/tools"
+fi
 
 print_header "设置 Android 开发环境变量"
 
@@ -75,29 +77,35 @@ if [ -d "$TOOLS_DIR/java" ] && [ -f "$TOOLS_DIR/java/bin/java" ]; then
     ((ENV_VARS_SET++))
 else
     print_yellow "⚠ Java 环境未找到, 跳过 JAVA_HOME 设置"
+    print_yellow "  请先运行: scripts/tools_install.sh --java"
 fi
 
 #===============================================================================
 # 设置 Android SDK 环境变量
 #===============================================================================
 if [ -d "$TOOLS_DIR/cmdline-tools" ]; then
-    export ANDROID_HOME="$TOOLS_DIR/cmdline-tools"
+    # Android SDK 根目录设置为 tools 目录
+    export ANDROID_HOME="$TOOLS_DIR"
     export ANDROID_SDK_ROOT="$ANDROID_HOME"
 
-    # 添加 Android 工具到 PATH
-    if [ -d "$ANDROID_HOME/bin" ]; then
-        export PATH="$ANDROID_HOME/bin:$PATH"
+    # 添加 cmdline-tools 到 PATH
+    if [ -d "$TOOLS_DIR/cmdline-tools/bin" ]; then
+        export PATH="$TOOLS_DIR/cmdline-tools/bin:$PATH"
+        print_green "✓ cmdline-tools 已添加到 PATH"
     fi
 
-    if [ -d "$ANDROID_HOME/platform-tools" ]; then
-        export PATH="$ANDROID_HOME/platform-tools:$PATH"
+    # 添加 platform-tools 到 PATH (在 tools 根目录下)
+    if [ -d "$TOOLS_DIR/platform-tools" ]; then
+        export PATH="$TOOLS_DIR/platform-tools:$PATH"
+        print_green "✓ platform-tools 已添加到 PATH"
     fi
 
-    if [ -d "$ANDROID_HOME/build-tools" ]; then
+    # 添加 build-tools 到 PATH (在 tools 根目录下)
+    if [ -d "$TOOLS_DIR/build-tools" ]; then
         # 找到最新的 build-tools 版本
-        BUILD_TOOLS_VERSION=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+        BUILD_TOOLS_VERSION=$(ls "$TOOLS_DIR/build-tools" | sort -V | tail -n 1)
         if [ -n "$BUILD_TOOLS_VERSION" ]; then
-            export PATH="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION:$PATH"
+            export PATH="$TOOLS_DIR/build-tools/$BUILD_TOOLS_VERSION:$PATH"
             print_green "✓ Android Build Tools ($BUILD_TOOLS_VERSION) 已添加到 PATH"
         fi
     fi
@@ -107,6 +115,7 @@ if [ -d "$TOOLS_DIR/cmdline-tools" ]; then
     ((ENV_VARS_SET++))
 else
     print_yellow "⚠ Android SDK 未找到, 跳过 Android 环境变量设置"
+    print_yellow "  请先运行: scripts/tools_install.sh --sdk"
 fi
 
 #===============================================================================
@@ -119,32 +128,71 @@ if [ -d "$TOOLS_DIR/gradle" ] && [ -f "$TOOLS_DIR/gradle/bin/gradle" ]; then
     ((ENV_VARS_SET++))
 else
     print_yellow "⚠ Gradle 未找到, 跳过 GRADLE_HOME 设置"
+    print_yellow "  请先运行: scripts/tools_install.sh --gradle"
 fi
 
 #===============================================================================
 # 设置 Android NDK 环境变量
 #===============================================================================
-if [ -d "$TOOLS_DIR/ndk" ] && [ -f "$TOOLS_DIR/ndk/ndk-build" ]; then
-    export ANDROID_NDK_HOME="$TOOLS_DIR/ndk"
-    export NDK_HOME="$ANDROID_NDK_HOME"
-    export PATH="$ANDROID_NDK_HOME:$PATH"
-    print_green "✓ ANDROID_NDK_HOME 设置为: $ANDROID_NDK_HOME"
-    print_green "✓ NDK_HOME 设置为: $NDK_HOME"
-    ((ENV_VARS_SET++))
+if [ -d "$TOOLS_DIR/ndk" ]; then
+    # 查找 NDK 可执行文件 (可能在版本化子目录中)
+    NDK_BUILD_PATH=""
+    if [ -f "$TOOLS_DIR/ndk/ndk-build" ]; then
+        NDK_BUILD_PATH="$TOOLS_DIR/ndk"
+    else
+        # 查找版本化目录中的 ndk-build
+        for ndk_version_dir in "$TOOLS_DIR/ndk"/*; do
+            if [ -f "$ndk_version_dir/ndk-build" ]; then
+                NDK_BUILD_PATH="$ndk_version_dir"
+                break
+            fi
+        done
+    fi
+    
+    if [ -n "$NDK_BUILD_PATH" ]; then
+        export ANDROID_NDK_HOME="$NDK_BUILD_PATH"
+        export NDK_HOME="$ANDROID_NDK_HOME"
+        export PATH="$ANDROID_NDK_HOME:$PATH"
+        print_green "✓ ANDROID_NDK_HOME 设置为: $ANDROID_NDK_HOME"
+        print_green "✓ NDK_HOME 设置为: $NDK_HOME"
+        ((ENV_VARS_SET++))
+    else
+        print_yellow "⚠ NDK 目录存在但 ndk-build 未找到"
+    fi
 else
     print_yellow "⚠ Android NDK 未找到, 跳过 NDK 环境变量设置"
+    print_yellow "  请先运行: scripts/tools_install.sh --ndk"
 fi
 
 #===============================================================================
 # 设置 CMake 环境变量
 #===============================================================================
-if [ -d "$TOOLS_DIR/cmake" ] && [ -f "$TOOLS_DIR/cmake/bin/cmake" ]; then
-    export CMAKE_HOME="$TOOLS_DIR/cmake"
-    export PATH="$CMAKE_HOME/bin:$PATH"
-    print_green "✓ CMAKE_HOME 设置为: $CMAKE_HOME"
-    ((ENV_VARS_SET++))
+if [ -d "$TOOLS_DIR/cmake" ]; then
+    # 查找 CMake 可执行文件 (可能在版本化子目录中)
+    CMAKE_BIN_PATH=""
+    if [ -f "$TOOLS_DIR/cmake/bin/cmake" ]; then
+        CMAKE_BIN_PATH="$TOOLS_DIR/cmake"
+    else
+        # 查找版本化目录中的 cmake
+        for cmake_version_dir in "$TOOLS_DIR/cmake"/*; do
+            if [ -f "$cmake_version_dir/bin/cmake" ]; then
+                CMAKE_BIN_PATH="$cmake_version_dir"
+                break
+            fi
+        done
+    fi
+    
+    if [ -n "$CMAKE_BIN_PATH" ]; then
+        export CMAKE_HOME="$CMAKE_BIN_PATH"
+        export PATH="$CMAKE_HOME/bin:$PATH"
+        print_green "✓ CMAKE_HOME 设置为: $CMAKE_HOME"
+        ((ENV_VARS_SET++))
+    else
+        print_yellow "⚠ CMake 目录存在但 cmake 可执行文件未找到"
+    fi
 else
     print_yellow "⚠ CMake 未找到, 跳过 CMAKE_HOME 设置"
+    print_yellow "  请先运行: scripts/tools_install.sh --cmake"
 fi
 
 #===============================================================================
@@ -209,5 +257,8 @@ if [ $ENV_VARS_SET -gt 0 ]; then
 
 else
     print_yellow "⚠ 未设置任何环境变量"
-    print_yellow "请先运行 tools_install.sh 安装开发工具"
+    print_yellow "请先运行 scripts/tools_install.sh 安装开发工具"
+    print_blue "示例:"
+    print_blue "  scripts/tools_install.sh --all     # 安装所有工具"
+    print_blue "  scripts/tools_install.sh --java --sdk  # 安装基础工具"
 fi
