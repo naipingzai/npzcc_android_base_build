@@ -174,7 +174,8 @@ build_project() {
         echo
         print_header "生成的APK文件"
         local apk_files
-        apk_files=$(find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null)
+        # 查找APK文件，同时检查outputs和intermediates目录
+        apk_files=$(find app/build/outputs/apk app/build/intermediates/apk -name "*.apk" -type f 2>/dev/null)
 
         if [ -n "$apk_files" ]; then
             # 创建输出目录
