@@ -5,16 +5,29 @@ plugins {
 
 android {
     namespace 'com.example.demo'
-    compileSdk 35
+    compileSdk 34
+    ndkVersion "25.1.8937393"
 
     defaultConfig {
         applicationId "com.example.demo"
         minSdk 23
-        targetSdk 35
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // NDK配置
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+        }
+        
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17"
+                abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+            }
+        }
     }
 
     buildTypes {
@@ -35,6 +48,14 @@ android {
 
     buildFeatures {
         viewBinding true
+    }
+    
+    // 外部原生构建配置
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
     }
 }
 
